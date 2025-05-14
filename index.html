@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>沖縄県営鉄道 糸満線</title>
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .station-label {
+      position: absolute;
+      background: red;
+      color: white;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      font-size: 18px;
+    }
+    #playButton {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      padding: 10px 15px;
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 24px !important;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <button id="playButton">再生</button>
+
+  <script>
+    let map, trainMarker, routePolyline, animationStartTime;
+    const animationDuration = 30000;
+
+    const stations = [
+      { lat: 26.1303, lng: 127.6764536, name: "糸満駅" },
+      { lat: 26.1326707, lng: 127.6862829, name: "兼城駅" },
+      { lat: 26.1348861, lng: 127.6991857, name: "高嶺駅" },
+      { lat: 26.1402164, lng: 127.7132717, name: "与名城駅" },
+      { lat: 26.1556363, lng: 127.7221765, name: "東風平駅" },
+      { lat: 26.159194, lng: 127.729741, name: "屋宜原駅" },
+      { lat: 26.1647289, lng: 127.7347644, name: "稲嶺駅" },
+      { lat: 26.1822529, lng: 127.7322714, name: "喜屋武駅" },
+      { lat: 26.1790876, lng: 127.7177087, name: "山川駅" },
+      { lat: 26.1878939, lng: 127.7091135, name: "津嘉山駅" },
+      { lat: 26.1963806, lng: 127.6979049, name: "国場駅" }
+    ];
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 26.17, lng: 127.7 },
+        zoom: 13
+      });
+
+      // 路線ポリライン
+      routePolyline = new google.maps.Polyline({
+        path: stations.map(s => ({ lat: s.lat, lng: s.lng })),
+        geodesic: true,
+        strokeColor: "#FF0000",
+        strokeOpacity: 1.0,
+        strokeWeight: 3,
+        map: map
+      });
+
+      // 駅マーカーとラベル
+      stations.forEach(station => {
+        const marker = new google.maps.Marker({
+          position: { lat: station.lat, lng: station.lng },
+          map: map,
+          icon: {
+            url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+            scaledSize: new google.maps.Size(32, 32)
+          }
+        });
+
+        // HTMLラベル作成
+        const labelDiv = document.createElement("div");
+        labelDiv.className = "station-label";
+        labelDiv.textContent = station.name;
+        document.body.appendChild(labelDiv);
+
+        // ラベルをマップ上の位置に合わせて表示
+        google.maps.event.addListener(map, "idle", () => updateLabelPosition(labelDiv, station));
+        google.maps.event.addListener(map, "zoom_changed", () => updateLabelPosition(labelDiv, station));
+        google.maps.event.addListener(map, "center_changed", () => updateLabelPosition(labelDiv, station));
+      });
+
+      // 列車マーカー
+      trainMarker = new google.maps.Marker({
+        map: map,
+        position: stations[0],
+        icon: {
+          url: "https://maps.google.com/mapfiles/ms/icons/rail.png",
+          anchor: new google.maps.Point(16, 16)
+        }
+      });
+
+      document.getElementById("playButton").addEventListener("click", startAnimation);
+    }
+
+    function updateLabelPosition(labelDiv, station) {
+      const point = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(station.lat, station.lng));
+      const scale = Math.pow(2, map.getZoom());
+      const bounds = map.getBounds();
+      const topLeft = map.getProjection().fromLatLngToPoint(bounds.getNorthEast());
+      const bottomRight = map.getProjection().fromLatLngToPoint(bounds.getSouthWest());
+      const mapDiv = document.getElementById("map");
+      const x = (point.x - bottomRight.x) * scale;
+      const y = (point.y - topLeft.y) * scale;
+      labelDiv.style.left = `${x + mapDiv.offsetLeft}px`;
+      labelDiv.style.top = `${y + mapDiv.offsetTop - 10}px`;
+    }
+
+    function startAnimation() {
+      animationStartTime = Date.now();
+      animateTrain();
+    }
+
+    function animateTrain() {
+      const elapsed = Date.now() - animationStartTime;
+      let progress = elapsed / animationDuration;
+      if (progress > 1) progress = 1;
+
+      const path = routePolyline.getPath();
+      const pos = getPositionOnPolyline(path, progress);
+      if (pos) trainMarker.setPosition(pos);
+
+      if (progress < 1) {
+        requestAnimationFrame(animateTrain);
+      }
+    }
+
+    function getPositionOnPolyline(path, progress) {
+      const total = google.maps.geometry.spherical.computeLength(path);
+      const target = total * progress;
+      let distance = 0;
+
+      for (let i = 0; i < path.getLength() - 1; i++) {
+        const p1 = path.getAt(i);
+        const p2 = path.getAt(i + 1);
+        const segment = google.maps.geometry.spherical.computeDistanceBetween(p1, p2);
+
+        if (distance + segment >= target) {
+          const fraction = (target - distance) / segment;
+          return google.maps.geometry.spherical.interpolate(p1, p2, fraction);
+        }
+        distance += segment;
+      }
+      return path.getAt(path.getLength() - 1);
+    }
+  </script>
+
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCiD8Z9Nuz3E-EZBGEF77AAUma26rnViMw&libraries=geometry&callback=initMap">
+  </script>
+</body>
+</html>
