@@ -56,9 +56,22 @@
       { lat: 26.1822529, lng: 127.7322714, name: "喜屋武駅" },
       { lat: 26.1790876, lng: 127.7177087, name: "山川駅" },
       { lat: 26.1878939, lng: 127.7091135, name: "津嘉山駅" },
-      { lat: 26.1963806, lng: 127.6979049, name: "国場駅" }
+      { lat: 26.1963806, lng: 127.7080, name: "国場駅" }
     ];
 
+const yonabaruLineStations = [
+  { lat: 26.2125,    lng: 127.6792,   name: "那覇駅" },
+  { lat: 26.2030,    lng: 127.6930,   name: "古波蔵駅" },
+  { lat: 26.1950,    lng: 127.7080,   name: "国場駅" },
+  { lat: 26.1920,    lng: 127.7140,   name: "真玉橋駅" },
+  { lat: 26.1900,    lng: 127.7200,   name: "一日橋駅" },
+  { lat: 26.1860,    lng: 127.7320,   name: "南風原駅" },
+  { lat: 26.1830,    lng: 127.7400,   name: "宮平駅" },
+  { lat: 26.1800,    lng: 127.7500,   name: "大里駅" },
+  { lat: 26.1770,    lng: 127.7600,   name: "与那原駅" }
+];
+
+    
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 26.17, lng: 127.7 },
@@ -70,6 +83,16 @@
         path: stations.map(s => ({ lat: s.lat, lng: s.lng })),
         geodesic: true,
         strokeColor: "#FF0000",
+        strokeOpacity: 1.0,
+        strokeWeight: 3,
+        map: map
+      });
+
+            // 路線ポリライン
+      yonabaru_routePolyline = new google.maps.Polyline({
+        path: yonabaruLineStations.map(s => ({ lat: s.lat, lng: s.lng })),
+        geodesic: true,
+        strokeColor: "#0000FF",
         strokeOpacity: 1.0,
         strokeWeight: 3,
         map: map
